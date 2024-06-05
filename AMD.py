@@ -134,3 +134,52 @@ print(prob_dropping_20percent)
 
 VaR = norm.ppf(.05, mu, sigma)
 print('Single Day Value At Risk: ', VaR)
+
+#Monte Carlo simulation for the AMD Daily Returns
+#mu and sigma is already calculated 
+mc_sims = 1000
+T = 100
+
+simulated_returns = np.zeros((mc_sims, T))
+
+for i in range(mc_sims): 
+    rand_returns = np.random.normal(mu, sigma, T)   
+    simulated_returns[i] = np.cumprod(1 + rand_returns)
+
+simulated_returns_df = pd.DataFrame(simulated_returns)
+
+def mcVaR(returns, alpha=5):
+    if isinstance(returns, pd.Series):
+        return np.percentile(returns, alpha)
+    else:
+        raise TypeError('Expected a pandas data series.')
+
+def mcCVaR(returns, alpha=5):
+    if isinstance(returns, pd.Series):
+        belowVar = returns <= mcVaR(returns, alpha=alpha)
+        return returns[belowVar].mean()
+    else:
+        raise TypeError('Expected a pandas data series.')
+        
+#slice the last row of the simulation
+
+portResults = pd.Series(simulated_returns_df.iloc[-1])
+
+VaR = mcVaR(portResults, alpha=5)
+CVaR = mcCVaR(portResults, alpha=5)
+
+print("Value at Risk (VaR):", VaR)
+print("Conditional Value at Risk (CVaR):", CVaR)
+
+# Plot simulated returns with the VaR line and CVaR line
+plt.figure(figsize=(15, 8))
+for i in range(mc_sims):
+    plt.plot(simulated_returns_df.iloc[i], color='blue', alpha=0.1)  
+plt.axhline(y=VaR, color='red', linestyle='--', label='VaR')
+plt.axhline(y=CVaR, color='green', linestyle='--', label='CVaR')
+plt.title('Monte Carlo Simulation of AMD Cummulative Daily Returns with VaR and CVaR')
+plt.xlabel('Time')
+plt.ylabel('Cumulative Return')
+plt.grid(True)
+plt.show()
+
